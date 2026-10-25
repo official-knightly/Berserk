@@ -1,0 +1,120 @@
+<p align="center">
+  <img src="logo.png" alt="Berserk Chess Engine" width="400"/>
+</p>
+
+<h1 align="center">Berserk</h1>
+<p align="center"><strong>A fast, open-source chess engine written in Rust</strong></p>
+
+<p align="center">
+  <a href="https://github.com/official-knightly/Berserk/releases"><img src="https://img.shields.io/github/v/release/official-knightly/Berserk?color=green&label=release" alt="Release"/></a>
+  <a href="https://github.com/official-knightly/Berserk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Unlicense-blue" alt="License"/></a>
+  <img src="https://img.shields.io/badge/language-Rust-orange" alt="Rust"/>
+</p>
+
+---
+
+## About
+
+Berserk is a UCI-compatible chess engine built for strength and speed. It uses a neural network evaluation (NNUE), multi-threading, optional Syzygy endgame tablebases, and SIMD acceleration (AVX2 / AVX-512 / NEON / WASM).
+
+This software is completely free — released into the public domain under the [Unlicense](LICENSE). You can do anything with it.
+
+---
+
+## Features
+
+- **NNUE evaluation** — neural network with incremental accumulator updates
+- **Multi-threaded search** — lazy SMP with NUMA-aware thread pinning
+- **Syzygy tablebases** — via Fathom (optional, enabled by default)
+- **SIMD acceleration** — AVX2, AVX-512, NEON, and WebAssembly SIMD
+- **UCI protocol** — compatible with any UCI-capable chess GUI
+- **Chess960 (FRC)** — full Fisher Random Chess support
+- **WebAssembly** — can be compiled and run in a browser
+
+---
+
+## Building
+
+### Requirements
+
+- [Rust](https://rustup.rs/) (stable)
+- `clang` (required for Syzygy support)
+
+### Quick build
+
+```sh
+cargo build --release
+```
+
+### Using the Makefile
+
+```sh
+make           # native build
+make no-syzygy # build without Syzygy support
+make pgo       # profile-guided optimisation build
+make wasm      # WebAssembly target
+make checkdeps # verify all build dependencies
+```
+
+The output binary will be named `berserk` (or `berserk.exe` on Windows).
+
+---
+
+## Usage
+
+Run directly as a UCI engine from any chess GUI (Arena, CuteChess, BankSia, etc.), or from the command line:
+
+```sh
+./berserk
+```
+
+### UCI Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `Hash` | spin | 64 MB | Transposition table size in MB |
+| `Threads` | spin | 1 | Number of search threads |
+| `MoveOverhead` | spin | 100 ms | Time buffer for move delivery |
+| `MultiPV` | spin | 1 | Number of PV lines to report |
+| `UCI_Chess960` | check | false | Enable Chess960 castling rules |
+| `SyzygyPath` | string | — | Path to Syzygy tablebase files |
+| `Minimal` | check | false | Minimal UCI output mode |
+
+### Extra Commands
+
+```
+bench        run built-in benchmark
+eval         show NNUE piece contributions for current position
+d            display the current board
+perft <n>    run perft to depth n
+compiler     show compiler/target info
+```
+
+---
+
+## Project Structure
+
+```
+src/
+├── board/        move generation, make/unmake, parser, SEE
+├── nnue/         accumulator, SIMD forward pass, output buckets
+├── types/        bitboard, moves, pieces, squares, zobrist keys
+├── tools/        bench, perft, speedtest
+├── search.rs     main alpha-beta search
+├── evaluation.rs classical eval helpers
+├── uci.rs        UCI protocol handler
+├── threadpool.rs lazy SMP thread management
+├── time.rs       time management
+└── transposition.rs  hash table
+deps/
+└── Fathom        Syzygy tablebase probing (C)
+build/
+└── build.rs      compile-time attack table & network generation
+```
+
+---
+
+## License
+
+This is free and unencumbered software released into the public domain.  
+See [LICENSE](LICENSE) for full details — or visit [unlicense.org](https://unlicense.org).

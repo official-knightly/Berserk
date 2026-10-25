@@ -1,0 +1,5 @@
+edition = "2026"
+max_width = 120
+struct_lit_width = 60
+use_small_heuristics = "Max"
+fn_params_layout = "Compressed"
