@@ -32,6 +32,7 @@ COPY api/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api/main.py ./main.py
+COPY api/client.js ./client.js
 COPY --from=engine-build /engine/target/release/berserk /usr/local/bin/berserk
 RUN chmod 755 /usr/local/bin/berserk
 
