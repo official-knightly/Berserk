@@ -130,6 +130,7 @@ This repository now includes a standalone HTTP service that runs the **existing 
 
 - `GET /` — service overview
 - `GET /health` — health check for a hosting provider
+- `GET /client.js` — browser adapter that calls this API and exposes the `BerserkEngine` interface expected by Berserk-web
 - `POST /api/analyze` — analyse a FEN and return Berserk's best move plus the MultiPV candidate lines
 
 Example request:
@@ -181,6 +182,8 @@ When the host provides a service URL such as `https://your-service.example`, tes
 
 ### Connecting Berserk-web
 
-A hosted API removes the need to copy the native engine binary or WASM build into the static site, but **the browser client must call the API**. Berserk-web currently initializes a local WebAssembly worker, so merely pasting a URL into GitHub Pages will not switch it to HTTP automatically. Its client adapter needs to send a `POST` request to `/api/analyze` with `fen`, `think_time_ms`, and `multi_pv`, then use the JSON response's `bestmove` and `candidates`. This API repository change deliberately leaves Berserk-web untouched.
+A hosted API removes the need to copy the native engine binary or WASM build into the static site. The service also hosts a compatible browser adapter at `https://YOUR_API_HOST/client.js`; it discovers the API origin from its own script URL, checks `/health`, and sends searches to `/api/analyze`.
+
+In `Berserk-web/index.html`, replace the existing `<script src="./engine.js"></script>` line with `<script src="https://YOUR_API_HOST/client.js"></script>` (replace `YOUR_API_HOST` with the deployed host). Keep that script before `app.js`. This is the one-time client connection; after that, search settings and results are sent through the API, so the site does not need local Berserk WASM files. This task intentionally leaves Berserk-web itself untouched.
 
 The API enables CORS by default so a static site can call it. For a public deployment, set `ALLOWED_ORIGINS` to your actual website origin where supported, and apply hosting rate limits; the endpoint uses CPU to run searches and is not intended to be an unrestricted public engine farm.
