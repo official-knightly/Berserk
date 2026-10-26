@@ -225,17 +225,20 @@ async def run_search(request: AnalyzeRequest) -> dict[str, Any]:
 
 
 @app.get("/")
+@app.get("/api/v1")
 async def root() -> dict[str, Any]:
     return {
         "name": "Berserk Chess Engine API",
         "status": "online",
-        "health": "/health",
-        "analyze": {"method": "POST", "path": "/api/analyze"},
+        "base_url": "https://berserk/api/v1",
+        "health": "/api/v1/health",
+        "analyze": {"method": "POST", "path": "/api/v1/analyze"},
         "docs": "/docs",
     }
 
 
 @app.get("/health")
+@app.get("/api/v1/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "engine": "Berserk"}
 
@@ -253,6 +256,7 @@ async def browser_client() -> FileResponse:
 
 
 @app.post("/api/analyze")
+@app.post("/api/v1/analyze")
 async def analyze(request: AnalyzeRequest) -> dict[str, Any]:
     try:
         await asyncio.wait_for(SEARCH_SLOTS.acquire(), timeout=2)
