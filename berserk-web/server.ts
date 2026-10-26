@@ -25,6 +25,8 @@ class UciEngine {
 
   get running() { return !!this.child && this.child.exitCode === null && !this.child.killed; }
 
+  initialize(): Promise<void> { return this.start(); }
+
   private send(command: string) {
     if (!this.running || !this.child) throw new Error("Engine process is not running");
     this.child.stdin.write(command + "\n");
@@ -143,7 +145,10 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(503).json({ error: "Engine temporarily unavailable. Please retry." });
 });
 
-const server = app.listen(PORT, "0.0.0.0", () => console.log(`Berserk API listening on port ${PORT}`));
+const server = app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Berserk API listening on port ${PORT}`);
+  void engine.initialize().catch(error => console.error("[engine startup]", error));
+});
 function shutdown() {
   server.close();
   process.exit(0);
