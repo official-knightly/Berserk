@@ -77,7 +77,7 @@ class AnalyzeRequest(BaseModel):
             raise ValueError("FEN en-passant square is invalid.")
         if not fields[4].isdigit() or not fields[5].isdigit() or int(fields[5]) < 1:
             raise ValueError("FEN move counters are invalid.")
-        if value.count("K") != 1 or value.count("k") != 1:
+        if fields[0].count("K") != 1 or fields[0].count("k") != 1:
             raise ValueError("FEN must contain one king of each colour.")
         return value
 
