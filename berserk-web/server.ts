@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const ENGINE_PATH = path.resolve(process.env.ENGINE_PATH ?? path.join(here, "../target/release/berserk"));
+const ENGINE_PATH = path.resolve(process.env.ENGINE_PATH ?? "../target/release/berserk");
 const PORT = Number(process.env.PORT ?? 3000);
 const MAX_MOVETIME = 5000;
 const DEFAULT_MOVETIME = 1000;
