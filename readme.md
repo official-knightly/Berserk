@@ -182,8 +182,10 @@ When the host provides a service URL such as `https://your-service.example`, tes
 
 ### Connecting Berserk-web
 
-A hosted API removes the need to copy the native engine binary or WASM build into the static site. The service also hosts a compatible browser adapter at `https://YOUR_API_HOST/client.js`; it discovers the API origin from its own script URL, checks `/health`, and sends searches to `/api/analyze`.
+A hosted API removes the need to copy the native engine binary or WASM build into the static site. The service also hosts an optional browser adapter at `/client.js`, but the current Berserk-web integration uses its existing `engine.js` as an API-backed adapter.
 
-In `Berserk-web/index.html`, replace the existing `<script src="./engine.js"></script>` line with `<script src="https://YOUR_API_HOST/client.js"></script>` (replace `YOUR_API_HOST` with the deployed host). Keep that script before `app.js`. This is the one-time client connection; after that, search settings and results are sent through the API, so the site does not need local Berserk WASM files. This task intentionally leaves Berserk-web itself untouched.
+After deploying the API, open `official-knightly/Berserk-web/index.html` and replace `https://YOUR-DEPLOYED-API-URL` in `window.BERSERK_API_URL` with the deployed service's base HTTPS URL (no trailing slash and no `/api/analyze` suffix). Keep the `engine.js` script before `app.js`. The website checks `/health` and sends searches to `/api/analyze`. The Berserk-web repository's `README.md` contains these steps.
+
+**There is no live API URL until the service has been deployed to a host.** The placeholder is intentional; do not treat it as a working URL.
 
 The API enables CORS by default so a static site can call it. For a public deployment, set `ALLOWED_ORIGINS` to your actual website origin where supported, and apply hosting rate limits; the endpoint uses CPU to run searches and is not intended to be an unrestricted public engine farm.
