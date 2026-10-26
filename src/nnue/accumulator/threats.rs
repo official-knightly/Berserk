@@ -7,7 +7,7 @@ use crate::{
 };
 
 mod threat_index;
-pub use threat_index::*;
+pub use threat_index::{initialize, threat_index};
 
 #[cfg(not(target_feature = "avx2"))]
 mod scalar;

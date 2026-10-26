@@ -53,17 +53,53 @@ jobs:
           path: berserk-windows-x64.zip
           if-no-files-found: error
 
+  unix-engines:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner: ubuntu-latest
+            archive: berserk-linux-x64.tar.gz
+          - name: macOS x64
+            runner: macos-13
+            archive: berserk-macos-x64.tar.gz
+          - name: macOS ARM64
+            runner: macos-14
+            archive: berserk-macos-arm64.tar.gz
+    steps:
+      - name: Checkout Berserk source
+        uses: actions/checkout@v4
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Build native engine
+        run: |
+          sed -i.bak 's/^edition = "2026"$/edition = "2024"/' Cargo.toml
+          cargo build --release --no-default-features
+      - name: Package engine
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          cp target/release/berserk dist/berserk
+          cp LICENSE dist/LICENSE
+          printf '%s\n' 'Berserk UCI chess engine' 'Run berserk from a UCI-compatible chess GUI.' > dist/README.txt
+          tar -czf "${{ matrix.archive }}" -C dist berserk LICENSE README.txt
+      - name: Upload native build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+
   webassembly:
     name: Build JavaScript and WebAssembly
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Berserk source
         uses: actions/checkout@v4
-      - name: Checkout WASM build helper
-        uses: actions/checkout@v4
-        with:
-          repository: official-knightly/Berserk-api
-          path: api-helper
       - name: Install Rust nightly and WASM target
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -75,7 +111,7 @@ jobs:
         run: |
           set -euxo pipefail
           sed -i 's/^edition = "2026"$/edition = "2024"/' Cargo.toml
-          cp api-helper/wasm/build-attacks.rs build/attacks.rs
+          cp wasm/build-attacks.rs build/attacks.rs
           cargo build --release --target wasm32-unknown-unknown --no-default-features
           WB_VERSION="$(awk '/^name = "wasm-bindgen"$/{getline; if ($1 == "version") {gsub(/"/, "", $3); print $3; exit}}' cargo.lock)"
           test -n "$WB_VERSION"
@@ -101,7 +137,7 @@ jobs:
 
   publish-downloads:
     name: Publish downloads
-    needs: [windows-exe, webassembly]
+    needs: [windows-exe, unix-engines, webassembly]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
@@ -113,6 +149,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: berserk-wasm-js
+      - name: Download Unix builds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: berserk-*.tar.gz
+          merge-multiple: true
       - name: Publish latest downloadable assets
         uses: softprops/action-gh-release@v2
         with:
@@ -123,9 +164,13 @@ jobs:
 
             - `berserk-windows-x64.zip`: Windows x64 UCI engine executable.
             - `berserk-wasm-js.zip`: browser JavaScript loader and WebAssembly engine.
+            - `berserk-linux-x64.tar.gz`: Linux x64 UCI engine.
+            - `berserk-macos-x64.tar.gz`: macOS Intel UCI engine.
+            - `berserk-macos-arm64.tar.gz`: macOS Apple Silicon UCI engine.
           prerelease: true
           make_latest: false
           files: |
             berserk-windows-x64.zip
             berserk-wasm-js.zip
+            berserk-*.tar.gz
           overwrite_files: true
