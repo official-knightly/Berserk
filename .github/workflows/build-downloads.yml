@@ -1,0 +1,129 @@
+name: Build downloadable Berserk binaries
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  windows-exe:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Berserk source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install LLVM for bindgen
+        run: choco install llvm --yes --no-progress
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Build native engine
+        shell: pwsh
+        env:
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin
+        run: cargo build --release --no-default-features
+      - name: Package Windows executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item target\release\berserk.exe dist\berserk.exe
+          Copy-Item LICENSE dist\LICENSE
+          @(
+            'Berserk Windows engine',
+            '',
+            'Run berserk.exe from a UCI-compatible chess GUI, or launch it in a terminal.',
+            'The engine communicates using the UCI protocol.',
+            'This build is compiled from the Berserk source in this repository.'
+          ) | Set-Content dist\README.txt
+          Compress-Archive -Path dist\berserk.exe,dist\LICENSE,dist\README.txt -DestinationPath berserk-windows-x64.zip -Force
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: berserk-windows-x64
+          path: berserk-windows-x64.zip
+          if-no-files-found: error
+
+  webassembly:
+    name: Build JavaScript and WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Berserk source
+        uses: actions/checkout@v4
+      - name: Checkout WASM build helper
+        uses: actions/checkout@v4
+        with:
+          repository: official-knightly/Berserk-api
+          path: api-helper
+      - name: Install Rust nightly and WASM target
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang libclang-dev
+      - name: Build WebAssembly engine
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sed -i 's/^edition = "2026"$/edition = "2024"/' Cargo.toml
+          cp api-helper/wasm/build-attacks.rs build/attacks.rs
+          cargo build --release --target wasm32-unknown-unknown --no-default-features
+          WB_VERSION="$(awk '/^name = "wasm-bindgen"$/{getline; if ($1 == "version") {gsub(/"/, "", $3); print $3; exit}}' Cargo.lock)"
+          test -n "$WB_VERSION"
+          cargo install wasm-bindgen-cli --version "$WB_VERSION" --locked
+          mkdir -p dist/wasm
+          wasm-bindgen --target web --out-dir dist/wasm --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
+          cp LICENSE dist/wasm/LICENSE
+          cat > dist/wasm/README.txt <<'EOF'
+          Berserk WebAssembly engine files
+
+          Keep berserk.js and berserk_bg.wasm together and serve them over HTTP(S).
+          Import berserk.js as an ES module and call its default init() export.
+          The engine wrapper is synchronous; use a Web Worker to avoid blocking your UI.
+          This WebAssembly build disables Syzygy tablebases.
+          EOF
+          cd dist && zip -r ../berserk-wasm-js.zip wasm
+      - name: Upload WebAssembly build
+        uses: actions/upload-artifact@v4
+        with:
+          name: berserk-wasm-js
+          path: berserk-wasm-js.zip
+          if-no-files-found: error
+
+  publish-downloads:
+    name: Publish downloads
+    needs: [windows-exe, webassembly]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows build
+        uses: actions/download-artifact@v4
+        with:
+          name: berserk-windows-x64
+      - name: Download WebAssembly build
+        uses: actions/download-artifact@v4
+        with:
+          name: berserk-wasm-js
+      - name: Publish latest downloadable assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: downloads
+          name: Berserk Downloads
+          body: |
+            Automatically built downloads from the current Berserk main branch.
+
+            - `berserk-windows-x64.zip`: Windows x64 UCI engine executable.
+            - `berserk-wasm-js.zip`: browser JavaScript loader and WebAssembly engine.
+          prerelease: true
+          make_latest: false
+          files: |
+            berserk-windows-x64.zip
+            berserk-wasm-js.zip
+          overwrite_files: true
