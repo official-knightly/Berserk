@@ -110,7 +110,7 @@ jobs:
           set -euxo pipefail
           sed -i 's/^edition = "2026"$/edition = "2024"/' Cargo.toml
           cargo build --lib --release --target wasm32-unknown-unknown --no-default-features
-          WB_VERSION="$(awk '/^name = "wasm-bindgen"$/{getline; if ($1 == "version") {gsub(/"/, "", $3); print $3; exit}}' cargo.lock)"
+          WB_VERSION="$(cargo tree --target wasm32-unknown-unknown --no-default-features --depth 1 --prefix none | sed -n 's/^wasm-bindgen v\([^ ]*\).*/\1/p' | head -n 1)"
           test -n "$WB_VERSION"
           cargo install wasm-bindgen-cli --version "$WB_VERSION" --locked
           mkdir -p dist/wasm
