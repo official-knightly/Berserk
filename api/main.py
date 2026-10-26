@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
@@ -237,6 +238,18 @@ async def root() -> dict[str, Any]:
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "engine": "Berserk"}
+
+
+@app.get("/client.js")
+async def browser_client() -> FileResponse:
+    client_path = os.path.join(os.path.dirname(__file__), "client.js")
+    if not os.path.isfile(client_path):
+        raise HTTPException(status_code=404, detail="Browser client script is unavailable.")
+    return FileResponse(
+        client_path,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.post("/api/analyze")
