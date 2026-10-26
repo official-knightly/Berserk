@@ -23,25 +23,23 @@ jobs:
       - name: Build Berserk WebAssembly
         shell: bash
         run: |
-          set -euxo pipefail
-          # This compatibility edit exists only on the runner; it is not committed to source.
-          sed -i 's/edition = "2026"/edition = "2024"/' Cargo.toml
-          cargo build --release --target wasm32-unknown-unknown --no-default-features
-          WB_VERSION="$(awk '/^name = "wasm-bindgen"$/{getline; if ($1 == "version") {gsub(/"/, "", $3); print $3; exit}}' Cargo.lock)"
-          test -n "$WB_VERSION"
-          cargo install wasm-bindgen-cli --version "$WB_VERSION" --locked
+          set +e
           mkdir -p wasm
-          wasm-bindgen --target web --out-dir wasm --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
-          cat > wasm/README.md <<'EOF'
+          (
+            set -euxo pipefail
+            # Runner-only compatibility edit; never committed to the repository source.
+            sed -i 's/edition = "2026"/edition = "2024"/' Cargo.toml
+            cargo build --release --target wasm32-unknown-unknown --no-default-features
+            WB_VERSION="$(awk '/^name = "wasm-bindgen"$/{getline; if ($1 == "version") {gsub(/"/, "", $3); print $3; exit}}' Cargo.lock)"
+            test -n "$WB_VERSION"
+            cargo install wasm-bindgen-cli --version "$WB_VERSION" --locked
+            wasm-bindgen --target web --out-dir wasm --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
+            cat > wasm/README.md <<'EOF'
           # Berserk WebAssembly
 
-          These files are generated from this repository's Berserk Rust engine. Do not edit the generated
-          berserk.js or berserk_bg.wasm manually; rebuild them from the source to update the engine.
-
-          ## Add to a website
-
-          Copy berserk.js and berserk_bg.wasm into the same directory in your website. Serve them over
-          HTTP(S) (not directly from file://), then import the generated JavaScript module:
+          This folder contains the generated browser build of the Berserk Rust chess engine.
+          Keep berserk.js and berserk_bg.wasm in the same directory on your website. Serve the
+          files over HTTP(S), then import the JavaScript module:
 
           ```js
           import init, { Engine } from "./berserk.js";
@@ -50,35 +48,48 @@ jobs:
           const engine = new Engine();
           engine.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
           engine.go_uci(12, 0, 1, (line) => console.log(line));
-          console.log("Best move:", engine.last_bestmove());
-          console.log("Score:", engine.last_score());
+          console.log(engine.last_bestmove(), engine.last_score());
           ```
 
-          The API is synchronous during search; run it in a Web Worker to avoid blocking your page. API
-          signatures are generated from src/wasm.rs. This build disables Syzygy tablebase support.
-          Berserk is GPL-3.0; preserve the project's license and attribution when redistributing it.
+          Search currently runs synchronously, so call it from a Web Worker to keep the page responsive.
+          The API is generated from src/wasm.rs. This build disables Syzygy tablebase support.
+          Preserve the project's GPL-3.0 license and attribution when redistributing the engine.
           EOF
-          ls -lh wasm
-      - name: Upload generated files
+          ) > wasm/BUILD_LOG.txt 2>&1
+          result=$?
+          if [ "$result" -eq 0 ]; then
+            echo "SUCCESS" > wasm/BUILD_STATUS.txt
+          else
+            printf 'FAILED (exit code %s)\n' "$result" > wasm/BUILD_STATUS.txt
+          fi
+          cat wasm/BUILD_STATUS.txt
+      - name: Upload build report and generated files
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: berserk-wasm-build
+          name: berserk-wasm-build-report
           path: wasm/
           if-no-files-found: error
           retention-days: 7
-
       - name: Checkout main for publishing only wasm/
+        if: always()
         uses: actions/checkout@v4
         with:
           ref: main
           path: main
           token: ${{ github.token }}
-      - name: Publish only wasm/ to main
+      - name: Publish build output or temporary error report
+        if: always()
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p main/wasm
-          cp -a wasm/. main/wasm/
+          if grep -q '^SUCCESS' wasm/BUILD_STATUS.txt; then
+            rm -f wasm/BUILD_LOG.txt wasm/BUILD_STATUS.txt
+            cp -a wasm/. main/wasm/
+          else
+            cp wasm/BUILD_STATUS.txt wasm/BUILD_LOG.txt main/wasm/
+          fi
           cd main
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -87,5 +98,5 @@ jobs:
             echo "No wasm/ changes to publish."
             exit 0
           fi
-          git commit -m "Add compiled Berserk WebAssembly browser build"
+          git commit -m "Add Berserk WASM build output or diagnostics"
           git push origin HEAD:main
