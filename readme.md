@@ -129,9 +129,11 @@ This repository now includes a standalone HTTP service that runs the **existing 
 ### Endpoints
 
 - `GET /` — service overview
-- `GET /health` — health check for a hosting provider
-- `GET /client.js` — browser adapter that calls this API and exposes the `BerserkEngine` interface expected by Berserk-web
-- `POST /api/analyze` — analyse a FEN and return Berserk's best move plus the MultiPV candidate lines
+- `GET /api/v1` — API v1 information and canonical endpoint list
+- `GET /api/v1/health` — health check for the engine API
+- `POST /api/v1/analyze` — analyse a FEN and return Berserk's best move plus the MultiPV candidate lines
+- `GET /health` and `POST /api/analyze` — backwards-compatible aliases
+- `GET /client.js` — optional browser adapter
 
 Example request:
 
@@ -156,36 +158,54 @@ docker build -f api/Dockerfile -t berserk-api .
 docker run --rm -p 10000:10000 -e PORT=10000 berserk-api
 ```
 
-Health check: `http://localhost:10000/health`
+Health check: `http://localhost:10000/api/v1/health`
 
 Try a search:
 
 ```sh
-curl -X POST http://localhost:10000/api/analyze \
+curl -X POST http://localhost:10000/api/v1/analyze \
   -H 'Content-Type: application/json' \
   -d '{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","think_time_ms":1000,"multi_pv":3}'
 ```
 
 Interactive API docs are available at `http://localhost:10000/docs`.
 
-### Deploy as a hosted API
+### Canonical API URL (v1)
 
-For a Docker-capable host such as Render:
+**The official Berserk API base URL is:**
 
-1. Create a new **Web Service** connected to `official-knightly/Berserk`.
-2. Choose the **Docker** runtime.
-3. Leave the service's **Root Directory** at the repository root.
-4. Set **Dockerfile Path** to `api/Dockerfile` (the Docker build context must remain the repository root).
-5. Set the health-check path to `/health`, then deploy.
+```text
+https://berserk/api/v1
+```
 
-When the host provides a service URL such as `https://your-service.example`, test `https://your-service.example/health` and use `https://your-service.example/api/analyze` as the analysis endpoint. The Docker build compiles the engine in a temporary build stage; its build-only manifest normalization does not modify the tracked engine files. The NNUE network is downloaded by the engine's existing build script during image build.
+All integrations should use this single base URL. Endpoints are:
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `https://berserk/api/v1` | API information |
+| GET | `https://berserk/api/v1/health` | Health check |
+| POST | `https://berserk/api/v1/analyze` | Analyze a FEN position |
+
+Send JSON to `/analyze`, for example:
+
+```json
+{
+  "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "think_time_ms": 1000,
+  "multi_pv": 3,
+  "threads": 1
+}
+```
+
+For local Docker testing, use `http://localhost:10000/api/v1` as the base URL.
+
+### Hosting and domain routing
+
+The API service is built from this repository's `api/Dockerfile`. To make the canonical URL work publicly, deploy the Docker service on a container-capable host and configure public DNS, HTTPS/TLS, and host routing for the hostname `berserk` so requests reach the running API service while preserving `/api/v1/*` paths. The canonical URL is the integration contract; the hosting provider's internal service URL should not be substituted into client integrations.
+
+**Important:** the source code now exposes the v1 routes, but the URL is only reachable from the public internet once the `berserk` hostname has valid public DNS/TLS and is routed to the running API service. Do not assume deployment or DNS is already configured.
 
 ### Connecting Berserk-web
 
-A hosted API removes the need to copy the native engine binary or WASM build into the static site. The service also hosts an optional browser adapter at `/client.js`, but the current Berserk-web integration uses its existing `engine.js` as an API-backed adapter.
-
-After deploying the API, open `official-knightly/Berserk-web/index.html` and replace `https://YOUR-DEPLOYED-API-URL` in `window.BERSERK_API_URL` with the deployed service's base HTTPS URL (no trailing slash and no `/api/analyze` suffix). Keep the `engine.js` script before `app.js`. The website checks `/health` and sends searches to `/api/analyze`. The Berserk-web repository's `README.md` contains these steps.
-
-**There is no live API URL until the service has been deployed to a host.** The placeholder is intentional; do not treat it as a working URL.
-
+Berserk-web and any third-party site should use the same canonical base URL, `https://berserk/api/v1`, and call `/health` and `/analyze` relative to that base. The website's own hosting domain is separate from the engine API domain.
 The API enables CORS by default so a static site can call it. For a public deployment, set `ALLOWED_ORIGINS` to your actual website origin where supported, and apply hosting rate limits; the endpoint uses CPU to run searches and is not intended to be an unrestricted public engine farm.
