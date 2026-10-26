@@ -118,3 +118,69 @@ build/
 
 This is free and unencumbered software released into the public domain.  
 See [LICENSE](LICENSE) for full details — or visit [unlicense.org](https://unlicense.org).
+
+
+---
+
+## Optional HTTP API (folder: `api/`)
+
+This repository now includes a standalone HTTP service that runs the **existing native Berserk engine** behind a small JSON API. The engine source, Cargo manifest in Git, and existing project layout are not changed by adding this service. The API can be deployed independently from the chess website.
+
+### Endpoints
+
+- `GET /` — service overview
+- `GET /health` — health check for a hosting provider
+- `POST /api/analyze` — analyse a FEN and return Berserk's best move plus the MultiPV candidate lines
+
+Example request:
+
+```json
+{
+  "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "think_time_ms": 1000,
+  "multi_pv": 3,
+  "threads": 1,
+  "context": 1
+}
+```
+
+`think_time_ms` is limited to 100–10,000 ms, `multi_pv` to 1–8, and `threads` to 1–2. The response includes `bestmove`, `scoreCp`, `depth`, `nodes`, `candidates`, and the optional `context` value. Each candidate contains `rank`, `depth`, `uci`, `pv`, `scoreCp`, and `mate`.
+
+### Run locally with Docker
+
+Run these commands from the **repository root** (not from inside `api/`):
+
+```sh
+docker build -f api/Dockerfile -t berserk-api .
+docker run --rm -p 10000:10000 -e PORT=10000 berserk-api
+```
+
+Health check: `http://localhost:10000/health`
+
+Try a search:
+
+```sh
+curl -X POST http://localhost:10000/api/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","think_time_ms":1000,"multi_pv":3}'
+```
+
+Interactive API docs are available at `http://localhost:10000/docs`.
+
+### Deploy as a hosted API
+
+For a Docker-capable host such as Render:
+
+1. Create a new **Web Service** connected to `official-knightly/Berserk`.
+2. Choose the **Docker** runtime.
+3. Leave the service's **Root Directory** at the repository root.
+4. Set **Dockerfile Path** to `api/Dockerfile` (the Docker build context must remain the repository root).
+5. Set the health-check path to `/health`, then deploy.
+
+When the host provides a service URL such as `https://your-service.example`, test `https://your-service.example/health` and use `https://your-service.example/api/analyze` as the analysis endpoint. The Docker build compiles the engine in a temporary build stage; its build-only manifest normalization does not modify the tracked engine files. The NNUE network is downloaded by the engine's existing build script during image build.
+
+### Connecting Berserk-web
+
+A hosted API removes the need to copy the native engine binary or WASM build into the static site, but **the browser client must call the API**. Berserk-web currently initializes a local WebAssembly worker, so merely pasting a URL into GitHub Pages will not switch it to HTTP automatically. Its client adapter needs to send a `POST` request to `/api/analyze` with `fen`, `think_time_ms`, and `multi_pv`, then use the JSON response's `bestmove` and `candidates`. This API repository change deliberately leaves Berserk-web untouched.
+
+The API enables CORS by default so a static site can call it. For a public deployment, set `ALLOWED_ORIGINS` to your actual website origin where supported, and apply hosting rate limits; the endpoint uses CPU to run searches and is not intended to be an unrestricted public engine farm.
