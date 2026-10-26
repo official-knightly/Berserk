@@ -6,6 +6,7 @@ use std::{
     process::Command,
 };
 
+#[path = "Attack.rs"]
 mod attacks;
 mod magics;
 mod maps;
