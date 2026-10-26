@@ -10,7 +10,7 @@ mod attacks;
 mod magics;
 mod maps;
 
-const BASE_URL: &str = "https://github.com/codedeliveryservice/RecklessNetworks/releases/download/networks";
+const BASE_URL: &str = "https://github.com/codedeliveryservice/recklessNetworks/releases/download/networks";
 const NETWORK_NAME: &str = "v60-7f587dfb.nnue";
 
 fn main() {

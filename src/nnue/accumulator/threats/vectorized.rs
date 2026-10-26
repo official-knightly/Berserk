@@ -188,4 +188,4 @@ pub fn push_threats_on_mutate(
 
     splat_threats(accum, pboard, perm, old_attacked, attackers, old_piece, square, false);
     splat_threats(accum, pboard, perm, new_attacked, attackers, new_piece, square, true);
-  }
+}

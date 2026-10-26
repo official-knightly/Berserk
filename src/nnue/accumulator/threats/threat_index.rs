@@ -114,4 +114,4 @@ pub fn threat_index(piece: Piece, from: Square, attacked: Piece, to: Square, mir
             + PIECE_OFFSET_LOOKUP[attacking][from] as isize
             + ATTACK_INDEX_LOOKUP[attacking][from][to] as isize
     }
-          }
+}
