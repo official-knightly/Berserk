@@ -72,7 +72,13 @@ class UciEngine {
       createInterface({ input: child.stderr }).on("line", line => console.error("[berserk stderr]", line));
       child.once("error", err => this.fail(new Error("Unable to start engine: " + err.message)));
       child.once("exit", (code, signal) => {
-        if (this.child === child) this.fail(new Error(`Engine exited (code=${code}, signal=${signal})`));
+        if (this.child === child) {
+          this.fail(new Error(`Engine exited (code=${code}, signal=${signal})`));
+          // Restart after an unexpected exit; the next request also awaits startup.
+          setTimeout(() => {
+            void this.start().catch(error => console.error("[engine restart]", error));
+          }, 1000).unref();
+        }
       });
       const uciOk = this.waitFor(line => line === "uciok", 15000);
       child.stdin.write("uci\n");
