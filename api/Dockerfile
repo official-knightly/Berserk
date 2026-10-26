@@ -34,6 +34,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY api/main.py ./main.py
 COPY api/client.js ./client.js
 COPY --from=engine-build /engine/target/release/berserk /usr/local/bin/berserk
+# MODEL is compiled as this absolute path by build/build.rs; keep the network there at runtime.
+COPY --from=engine-build /engine/networks/v60-7f587dfb.nnue /engine/networks/v60-7f587dfb.nnue
 RUN chmod 755 /usr/local/bin/berserk
 
 EXPOSE 10000
