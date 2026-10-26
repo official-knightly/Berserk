@@ -5,7 +5,7 @@ on:
       - temp-wasm-build-20261026
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build-wasm:
     runs-on: ubuntu-latest
@@ -66,3 +66,26 @@ jobs:
           path: wasm/
           if-no-files-found: error
           retention-days: 7
+
+      - name: Checkout main for publishing only wasm/
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          token: ${{ github.token }}
+      - name: Publish only wasm/ to main
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p main/wasm
+          cp -a wasm/. main/wasm/
+          cd main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add wasm/
+          if git diff --cached --quiet; then
+            echo "No wasm/ changes to publish."
+            exit 0
+          fi
+          git commit -m "Add compiled Berserk WebAssembly browser build"
+          git push origin HEAD:main
