@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: Berserk Chess Engine API
+  version: 1.0.0
+  description: Returns the best move from the Berserk UCI chess engine.
+servers:
+  - url: https://YOUR-API-DOMAIN.example.com
+    description: Replace with the deployed HTTPS API URL
+paths:
+  /bestmove:
+    post:
+      operationId: getBestMove
+      summary: Get the engine's best move
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fen]
+              properties:
+                fen:
+                  type: string
+                  description: Position in Forsyth-Edwards Notation
+                  example: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                movetime:
+                  type: integer
+                  minimum: 1
+                  maximum: 5000
+                  default: 1000
+                  description: Search time in milliseconds
+      responses:
+        "200":
+          description: Best move returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bestmove, info]
+                properties:
+                  bestmove:
+                    type: string
+                    example: e2e4
+                  info:
+                    type: string
+        "400":
+          description: Invalid FEN or request
+        "429":
+          description: Rate limit exceeded
+        "503":
+          description: Engine temporarily unavailable
+  /health:
+    get:
+      operationId: getHealth
+      summary: Check API health
+      responses:
+        "200":
+          description: API status
