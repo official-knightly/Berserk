@@ -1,0 +1,9 @@
+.git
+.github
+target
+node_modules
+berserk-web/node_modules
+berserk-web/dist
+*.log
+.env
+.env.*
