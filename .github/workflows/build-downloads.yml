@@ -64,10 +64,10 @@ jobs:
             runner: ubuntu-latest
             archive: berserk-linux-x64.tar.gz
           - name: macOS x64
-            runner: macos-13
+            runner: macos-15-intel
             archive: berserk-macos-x64.tar.gz
           - name: macOS ARM64
-            runner: macos-14
+            runner: macos-15
             archive: berserk-macos-arm64.tar.gz
     steps:
       - name: Checkout Berserk source
