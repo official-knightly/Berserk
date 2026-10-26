@@ -35,6 +35,9 @@ jobs:
       - name: Install wasm-bindgen CLI
         run: cargo install wasm-bindgen-cli --locked
 
+      - name: Normalize unsupported package edition in the build workspace only
+        run: sed -i 's/edition = "2026"/edition = "2024"/' Cargo.toml
+
       - name: Build Berserk for WebAssembly
         run: cargo build --release --target wasm32-unknown-unknown --no-default-features
 
