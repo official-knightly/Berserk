@@ -1,6 +1,5 @@
 import http from "node:http";
 import { spawn } from "node:child_process";
-import { once } from "node:events";
 
 const PORT = Number(process.env.PORT || 8787);
 const ENGINE_PATH = process.env.ENGINE_PATH || new URL("../target/release/berserk", import.meta.url).pathname;
@@ -9,7 +8,6 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "*").split(",").map(s =>
 let engine;
 let input = "";
 let waiters = [];
-let busy = false;
 let queue = Promise.resolve();
 
 function cors(req, res) {
@@ -74,7 +72,7 @@ async function analyse(body) {
   const depth = body.depth == null ? null : Math.max(1, Math.min(40, Math.floor(Number(body.depth))));
   engine.stdin.write(position + "\n");
   const infos = [];
-  const w = { match: line => line.startsWith("bestmove "), resolve: line => resolveResult(line, infos), reject: null, collect: false, info: infos, timer: null };
+  const w = { match: line => line.startsWith("bestmove "), resolve: line => resolveResult(line, infos), reject: null, collect: true, info: infos, timer: null };
   function resolveResult(line, collected) {
     const bestmove = line.split(/\s+/)[1];
     const finalInfo = collected.filter(x => x.startsWith("info ")).at(-1) || "";
@@ -96,9 +94,6 @@ async function analyse(body) {
     waiters.push(w);
   });
   engine.stdin.write("go " + (depth ? "depth " + depth : "movetime " + ms) + "\n");
-  // The data handler also records analysis lines for the active search.
-  const watcher = line => { if (line.startsWith("info ")) infos.push(line); };
-  w.info = infos;
   return await resultPromise;
 }
 function enqueue(fn) {
