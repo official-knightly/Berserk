@@ -8,7 +8,7 @@ on:
       - "src/**"
       - "build/**"
       - "Cargo.toml"
-      - "cargo.lock"
+      - "Cargo.lock"
       - ".github/workflows/build-wasm-api.yml"
       - "api/**"
       - "wrangler.jsonc"
@@ -40,6 +40,10 @@ jobs:
           mkdir -p wasm/browser wasm/worker
           wasm-bindgen --target web --out-dir wasm/browser --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
           wasm-bindgen --target bundler --out-dir wasm/worker --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
+          test -s wasm/browser/berserk.js
+          test -s wasm/browser/berserk_bg.wasm
+          test -s wasm/worker/berserk.js
+          test -s wasm/worker/berserk_bg.wasm
           cp LICENSE wasm/browser/LICENSE
           cp LICENSE wasm/worker/LICENSE
           cat > wasm/browser/README.txt <<'EOF'
