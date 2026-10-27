@@ -1,0 +1,58 @@
+name: Build Berserk WASM and API
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "build/**"
+      - "Cargo.toml"
+      - "cargo.lock"
+      - ".github/workflows/build-wasm-api.yml"
+      - "api/**"
+      - "wrangler.jsonc"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout engine source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Rust nightly and WASM target
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Build browser and Worker WASM modules
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sed -i 's/^edition = "2026"$/edition = "2024"/' Cargo.toml
+          cargo build --lib --release --target wasm32-unknown-unknown --no-default-features
+          WB_VERSION="$(cargo tree --target wasm32-unknown-unknown --no-default-features --depth 1 --prefix none | sed -n 's/^wasm-bindgen v\([^ ]*\).*/\1/p' | head -n 1)"
+          test -n "$WB_VERSION"
+          cargo install wasm-bindgen-cli --version "$WB_VERSION" --locked
+          mkdir -p wasm/browser wasm/worker
+          wasm-bindgen --target web --out-dir wasm/browser --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
+          wasm-bindgen --target bundler --out-dir wasm/worker --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
+          cp LICENSE wasm/browser/LICENSE
+          cp LICENSE wasm/worker/LICENSE
+          cat > wasm/browser/README.txt <<'EOF'
+          Berserk browser WebAssembly build. Keep berserk.js and berserk_bg.wasm together.
+          Import berserk.js as an ES module and initialize it before using Engine.
+          This build disables Syzygy tablebases.
+          EOF
+          cat > wasm/worker/README.txt <<'EOF'
+          Generated Cloudflare Worker module. Do not edit by hand; rebuilt from Rust source.
+          This build disables Syzygy tablebases.
+          EOF
+      - name: Commit generated WASM files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Build browser and Worker WASM artifacts"
+          file_pattern: "wasm/browser/* wasm/worker/*"
