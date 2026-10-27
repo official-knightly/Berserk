@@ -55,15 +55,15 @@ jobs:
           Generated Cloudflare Worker module. Do not edit by hand; rebuilt from Rust source.
           This build disables Syzygy tablebases.
           EOF
-      - name: Validate Cloudflare Worker bundle
-        run: |
-          npm install --no-save wrangler
-          npx wrangler deploy --dry-run
       - name: Commit generated WASM files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Build browser and Worker WASM artifacts"
           file_pattern: "wasm/browser/* wasm/worker/*"
+      - name: Validate Cloudflare Worker bundle
+        run: |
+          npm install --no-save wrangler
+          npx wrangler deploy --dry-run
       - name: Deploy API to Cloudflare when credentials are configured
         shell: bash
         env:
