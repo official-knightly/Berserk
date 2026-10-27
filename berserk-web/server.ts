@@ -8,7 +8,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const ENGINE_PATH = path.resolve(process.env.ENGINE_PATH ?? "../target/release/berserk");
+const defaultEngineName = process.platform === "win32" ? "berserk.exe" : "berserk";
+const ENGINE_PATH = process.env.ENGINE_PATH
+  ? path.resolve(process.env.ENGINE_PATH)
+  : path.resolve(here, "..", "target", "release", defaultEngineName);
 const PORT = Number(process.env.PORT ?? 3000);
 const MAX_MOVETIME = 5000;
 const DEFAULT_MOVETIME = 1000;
@@ -22,10 +25,20 @@ class UciEngine {
   private queue: Promise<unknown> = Promise.resolve();
   private infoLines: string[] = [];
   private ready = false;
+  private shuttingDown = false;
 
   get running() { return !!this.child && this.child.exitCode === null && !this.child.killed; }
 
   initialize(): Promise<void> { return this.start(); }
+
+  shutdown() {
+    this.shuttingDown = true;
+    const child = this.child;
+    this.child = null;
+    this.ready = false;
+    for (const waiter of [...this.waiters]) waiter.reject(new Error("API is shutting down"));
+    if (child && child.exitCode === null) child.kill();
+  }
 
   private send(command: string) {
     if (!this.running || !this.child) throw new Error("Engine process is not running");
@@ -61,6 +74,7 @@ class UciEngine {
   }
 
   private async start(): Promise<void> {
+    if (this.shuttingDown) throw new Error("API is shutting down");
     if (this.running && this.ready) return;
     if (this.startPromise) return this.startPromise;
     this.startPromise = (async () => {
@@ -75,9 +89,11 @@ class UciEngine {
         if (this.child === child) {
           this.fail(new Error(`Engine exited (code=${code}, signal=${signal})`));
           // Restart after an unexpected exit; the next request also awaits startup.
-          setTimeout(() => {
-            void this.start().catch(error => console.error("[engine restart]", error));
-          }, 1000).unref();
+          if (!this.shuttingDown) {
+            setTimeout(() => {
+              if (!this.shuttingDown) void this.start().catch(error => console.error("[engine restart]", error));
+            }, 1000).unref();
+          }
         }
       });
       const uciOk = this.waitFor(line => line === "uciok", 15000);
@@ -155,9 +171,13 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Berserk API listening on port ${PORT}`);
   void engine.initialize().catch(error => console.error("[engine startup]", error));
 });
+let shuttingDown = false;
 function shutdown() {
-  server.close();
-  process.exit(0);
+  if (shuttingDown) return;
+  shuttingDown = true;
+  engine.shutdown();
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 5000).unref();
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
