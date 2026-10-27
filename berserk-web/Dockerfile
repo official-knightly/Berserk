@@ -1,5 +1,5 @@
 # Build the existing Rust engine without changing its source or Cargo.toml.
-FROM rust:nightly AS engine-build
+FROM rustlang/rust:nightly AS engine-build
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential clang libclang-dev pkg-config && rm -rf /var/lib/apt/lists/*
 COPY . .
