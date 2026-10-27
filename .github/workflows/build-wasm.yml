@@ -1,0 +1,57 @@
+name: Build Berserk WebAssembly
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "build/**"
+      - "Cargo.toml"
+      - "cargo.lock"
+      - ".github/workflows/build-wasm.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Berserk source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust nightly and WASM target
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Build browser WebAssembly module
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sed -i 's/^edition = "2026"$/edition = "2024"/' Cargo.toml
+          cargo build --lib --release --target wasm32-unknown-unknown --no-default-features
+          WB_VERSION="$(cargo tree --target wasm32-unknown-unknown --no-default-features --depth 1 --prefix none | sed -n 's/^wasm-bindgen v\([^ ]*\).*/\1/p' | head -n 1)"
+          test -n "$WB_VERSION"
+          cargo install wasm-bindgen-cli --version "$WB_VERSION" --locked
+          mkdir -p wasm/browser
+          wasm-bindgen --target web --out-dir wasm/browser --out-name berserk target/wasm32-unknown-unknown/release/berserk.wasm
+          test -s wasm/browser/berserk.js
+          test -s wasm/browser/berserk_bg.wasm
+          cp LICENSE wasm/browser/LICENSE
+          cat > wasm/browser/README.txt <<'EOF'
+          Berserk browser WebAssembly build.
+          Keep berserk.js and berserk_bg.wasm together and serve them over HTTP(S).
+          Import berserk.js as an ES module and initialize it before using Engine.
+          The engine wrapper is synchronous; use a Web Worker to keep the UI responsive.
+          This build disables Syzygy tablebases.
+          EOF
+
+      - name: Commit generated browser WASM files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Build Berserk browser WASM artifacts"
+          file_pattern: "wasm/browser/*"

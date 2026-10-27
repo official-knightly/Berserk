@@ -1,9 +1,0 @@
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "berserk-engine-api",
-  "main": "api/worker.mjs",
-  "compatibility_date": "2026-10-27",
-  "workers_dev": true,
-  "rules": [{ "type": "CompiledWasm", "globs": ["wasm/worker/*.wasm"] }],
-  "limits": { "cpu_ms": 30000 }
-}
