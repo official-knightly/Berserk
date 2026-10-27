@@ -1,0 +1,49 @@
+name: Berserk Web TypeScript CI
+
+on:
+  push:
+    paths:
+      - "berserk-web/**"
+      - ".github/workflows/berserk-web.yml"
+  pull_request:
+    paths:
+      - "berserk-web/**"
+      - ".github/workflows/berserk-web.yml"
+  workflow_dispatch:
+
+jobs:
+  build-api:
+    name: Build Berserk API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: berserk-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Type-check and build API
+        run: npm run build
+
+  build-mcp:
+    name: Build MCP server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: berserk-web/mcp
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Type-check and build MCP server
+        run: npm run build
