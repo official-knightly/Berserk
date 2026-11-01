@@ -67,14 +67,17 @@ jobs:
           - name: Linux x64
             runner: ubuntu-latest
             archive: berserk-linux-x64.tar.gz
+            zip: berserk-linux-x64.zip
             binary: berserk-linux-x64
           - name: macOS x64
             runner: macos-15-intel
             archive: berserk-macos-x64.tar.gz
+            zip: berserk-macos-x64.zip
             binary: berserk-macos-x64
           - name: macOS ARM64
             runner: macos-15
             archive: berserk-macos-arm64.tar.gz
+            zip: berserk-macos-arm64.zip
             binary: berserk-macos-arm64
     steps:
       - name: Checkout Berserk source
@@ -95,12 +98,14 @@ jobs:
           cp LICENSE dist/LICENSE
           printf '%s\n' 'Berserk UCI chess engine' 'Run berserk from a UCI-compatible chess GUI.' > dist/README.txt
           tar -czf "${{ matrix.archive }}" -C dist berserk LICENSE README.txt
+          zip -j "${{ matrix.zip }}" dist/berserk dist/LICENSE dist/README.txt
       - name: Upload native build
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.archive }}
           path: |
             ${{ matrix.archive }}
+            ${{ matrix.zip }}
             ${{ matrix.binary }}
           if-no-files-found: error
 
@@ -172,9 +177,12 @@ jobs:
             - `berserk-windows-x64.exe`: standalone Windows x64 UCI engine executable for tournament managers and chess GUIs.
             - `berserk-windows-x64.zip`: Windows x64 executable, license, and setup instructions.
             - `berserk-wasm-js.zip`: browser JavaScript loader and WebAssembly engine.
-            - `berserk-linux-x64` and `berserk-linux-x64.tar.gz`: Linux x64 UCI engine.
-            - `berserk-macos-x64` and `berserk-macos-x64.tar.gz`: macOS Intel UCI engine.
-            - `berserk-macos-arm64` and `berserk-macos-arm64.tar.gz`: macOS Apple Silicon UCI engine.
+            - `berserk-linux-x64` and `berserk-linux-x64.zip`: Linux x64 standalone UCI engine and ZIP package.
+            - `berserk-linux-x64.tar.gz`: Linux x64 tar.gz package (kept for compatibility).
+            - `berserk-macos-x64` and `berserk-macos-x64.zip`: macOS Intel standalone UCI engine and ZIP package.
+            - `berserk-macos-x64.tar.gz`: macOS Intel tar.gz package (kept for compatibility).
+            - `berserk-macos-arm64` and `berserk-macos-arm64.zip`: macOS Apple Silicon standalone UCI engine and ZIP package.
+            - `berserk-macos-arm64.tar.gz`: macOS Apple Silicon tar.gz package (kept for compatibility).
           prerelease: true
           make_latest: false
           files: |
@@ -183,6 +191,9 @@ jobs:
             berserk-wasm-js.zip
             berserk-*.tar.gz
             berserk-linux-x64
+            berserk-linux-x64.zip
             berserk-macos-x64
+            berserk-macos-x64.zip
             berserk-macos-arm64
+            berserk-macos-arm64.zip
           overwrite_files: true
