@@ -123,7 +123,8 @@ See [LICENSE](LICENSE) for full details — or visit [unlicense.org](https://unl
 
 Download prebuilt engine files from the [Berserk Downloads page](https://github.com/official-knightly/Berserk/releases/tag/downloads). This is an automated downloads release (currently marked as a prerelease), so the standard “latest stable release” badge may say no release is available even though these files exist:
 
-- **Windows x64:** `berserk-windows-x64.zip` includes `berserk.exe` and instructions. It can be added to a UCI-compatible chess GUI.
+- **Windows x64:** `berserk-windows-x64.exe` is the standalone UCI engine binary. Select this file directly in a UCI-compatible chess GUI or tournament manager (including engine championship software). `berserk-windows-x64.zip` also includes `berserk.exe`, the license, and instructions.
+- **Linux x64 and macOS:** standalone native engine binaries are provided alongside the `.tar.gz` packages for Linux x64, macOS Intel, and macOS Apple Silicon.
 - **Web apps:** `berserk-wasm-js.zip` includes `berserk.js` and `berserk_bg.wasm` for local browser integration.
 - **Full source:** clone or download this repository to build or integrate the engine yourself.
 
