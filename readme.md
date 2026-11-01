@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="berserk.png" alt="Berserk Chess Engine" width="400"/>
+  <img src="Berserk.png" alt="Berserk Chess Engine" width="400"/>
 </p>
 
 <h1 align="center">Berserk</h1>
