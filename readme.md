@@ -19,6 +19,8 @@ Berserk is a UCI-compatible chess engine built for strength and speed. It uses a
 
 link - https://berserk-sigma.akatsuki-x-pain12.workers.dev/
 
+link - https://berserk-sage.vercel.app
+
 This software is completely free — released into the public domain under the [Unlicense](LICENSE). You can do anything with it.
 
 ---
